@@ -1,0 +1,15 @@
+[project]
+name = "tts-astro"
+version = "0.1.0"
+description = "Star Names Crossword Puzzle"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "sqlmodel",
+    "httpx",
+    "beautifulsoup4",
+    "jinja2",
+    "pydantic"
+]

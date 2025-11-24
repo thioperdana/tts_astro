@@ -1,0 +1,286 @@
+:root {
+    --bg-color: #0b0d17;
+    --text-color: #d0d6f9;
+    --accent-color: #ffffff;
+    --grid-bg: #15192b;
+    --cell-bg: #23283d;
+    --cell-active: #383f5e;
+    --highlight: #00c2cb;
+    --font-main: 'Outfit', sans-serif;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --bg-card: #15192b;
+    --secondary-color: #00c2cb;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-main);
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+header h1 {
+    font-size: 3rem;
+    color: var(--accent-color);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    font-family: var(--font-main);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn.primary {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+}
+
+.btn.secondary {
+    background-color: transparent;
+    border: 1px solid var(--text-color);
+    color: var(--text-color);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+}
+
+.game-area {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.grid-container {
+    background-color: var(--grid-bg);
+    padding: 20px;
+    border-radius: 8px;
+    display: grid;
+    /* Grid template columns will be set by JS */
+    gap: 2px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    max-width: 100%;
+    overflow: auto;
+}
+
+.cell {
+    width: 30px;
+    height: 30px;
+    background-color: var(--cell-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    font-weight: 600;
+    color: var(--accent-color);
+    user-select: none;
+}
+
+.cell.empty {
+    background-color: transparent;
+    pointer-events: none;
+}
+
+.cell input {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    text-align: center;
+    color: inherit;
+    font-family: inherit;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    outline: none;
+    caret-color: transparent;
+    cursor: pointer;
+}
+
+.cell .number {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+}
+
+.cell.active {
+    background-color: var(--cell-active);
+}
+
+.cell.highlight {
+    background-color: rgba(0, 194, 203, 0.2);
+}
+
+.clues-container {
+    flex: 1;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.clues-section h3 {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    color: var(--highlight);
+}
+
+.clues-section ul {
+    list-style: none;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.clues-section li {
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.clues-section li:hover,
+.clues-section li.active {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.clues-section li span.num {
+    font-weight: bold;
+    margin-right: 8px;
+    color: var(--accent-color);
+}
+
+.loading-msg {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background-color: var(--bg-card);
+    padding: 2rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    text-align: center;
+}
+
+.modal-content h2 {
+    color: var(--accent-color);
+    margin-bottom: 1.5rem;
+}
+
+#saved-games-list,
+#leaderboard-list {
+    list-style: none;
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+#saved-games-list li,
+#leaderboard-list li {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+}
+
+#saved-games-list li:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Score Styles */
+.big-score {
+    font-size: 4rem;
+    font-weight: bold;
+    color: var(--secondary-color);
+    margin: 1rem 0;
+    text-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
+}
+
+#player-name-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 1.2rem;
+    text-align: center;
+    margin-bottom: 1rem;
+    width: 80%;
+}
+
+#leaderboard-list li {
+    cursor: default;
+}
+
+.score-badge {
+    color: var(--secondary-color);
+    font-weight: bold;
+}

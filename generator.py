@@ -11,21 +11,24 @@ class CrosswordGenerator:
 
     def generate(self, words: List[Star]) -> Dict:
         # Sort words by length, longest first
-        words.sort(key=lambda x: len(x.name), reverse=True)
+        words.sort(key=lambda x: len(self._sanitize_word(x.name)), reverse=True)
         
         # Place first word
         if not words:
             return {}
             
-        first_word = words[0]
+        first_word_obj = words[0]
+        first_word_clean = self._sanitize_word(first_word_obj.name)
+        
         # Place in middle
         start_row = self.height // 2
-        start_col = (self.width - len(first_word.name)) // 2
+        start_col = (self.width - len(first_word_clean)) // 2
         
-        if self._place_word(first_word, start_row, start_col, 'across'):
+        if self._place_word(first_word_clean, start_row, start_col, 'across'):
             self.placed_words.append({
-                'word': first_word.name,
-                'clue': first_word.meaning,
+                'word': first_word_clean,
+                'original_word': first_word_obj.name,
+                'clue': first_word_obj.meaning,
                 'row': start_row,
                 'col': start_col,
                 'direction': 'across',
@@ -43,11 +46,15 @@ class CrosswordGenerator:
             'height': self.height
         }
 
+    def _sanitize_word(self, word: str) -> str:
+        """Remove spaces, dots, and non-alphanumeric chars, convert to upper."""
+        return "".join(c for c in word if c.isalnum()).upper()
+
     def _try_place_word(self, word_obj: Star):
-        word = word_obj.name.upper()
+        word = self._sanitize_word(word_obj.name)
         # Find potential intersections
         for placed in self.placed_words:
-            placed_word = placed['word'].upper()
+            placed_word = placed['word'] # Already sanitized
             
             # Find common letters
             for i, char in enumerate(word):
@@ -72,9 +79,10 @@ class CrosswordGenerator:
                             start_col = placed['col'] - i
                             
                         if self._can_place_word(word, start_row, start_col, new_dir):
-                            self._place_word(word_obj, start_row, start_col, new_dir)
+                            self._place_word(word, start_row, start_col, new_dir)
                             self.placed_words.append({
-                                'word': word_obj.name,
+                                'word': word,
+                                'original_word': word_obj.name,
                                 'clue': word_obj.meaning,
                                 'row': start_row,
                                 'col': start_col,
@@ -126,8 +134,8 @@ class CrosswordGenerator:
             
         return True
 
-    def _place_word(self, word_obj: Star, row: int, col: int, direction: str) -> bool:
-        word = word_obj.name.upper()
+    def _place_word(self, word: str, row: int, col: int, direction: str) -> bool:
+        # word is already sanitized and upper
         if not self._can_place_word(word, row, col, direction):
             return False
             

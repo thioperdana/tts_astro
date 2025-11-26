@@ -21,6 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-close-modal').addEventListener('click', () => {
         document.getElementById('load-modal').classList.add('hidden');
     });
+
+    // Leaderboard button
+    document.getElementById('btn-view-leaderboard').addEventListener('click', showLeaderboardModal);
+    document.getElementById('btn-close-leaderboard').addEventListener('click', () => {
+        document.getElementById('leaderboard-modal').classList.add('hidden');
+    });
 });
 
 async function newGame() {
@@ -322,12 +328,11 @@ function showScoreModal(result) {
     document.getElementById('correct-count').textContent = result.correct_letters;
     document.getElementById('total-count').textContent = result.total_letters;
 
+    // Render the answer grid with color-coded results
+    renderAnswerGrid();
+
     document.getElementById('score-modal').classList.remove('hidden');
     document.getElementById('name-input-section').classList.remove('hidden');
-    document.getElementById('leaderboard-section').classList.add('hidden');
-
-    // Load leaderboard in background
-    loadLeaderboard();
 }
 
 async function savePlayerName() {
@@ -348,8 +353,7 @@ async function savePlayerName() {
 
         if (response.ok) {
             document.getElementById('name-input-section').classList.add('hidden');
-            document.getElementById('leaderboard-section').classList.remove('hidden');
-            loadLeaderboard();
+            alert('Skor berhasil disimpan!');
         } else {
             alert('Gagal menyimpan nama');
         }
@@ -384,5 +388,92 @@ async function loadLeaderboard() {
     } catch (e) {
         console.error(e);
         list.innerHTML = 'Gagal memuat papan skor';
+    }
+}
+
+async function showLeaderboardModal() {
+    const modal = document.getElementById('leaderboard-modal');
+    const list = document.getElementById('leaderboard-list-main');
+
+    if (!modal || !list) {
+        console.error('Leaderboard elements not found');
+        alert('Error: Modal tidak ditemukan. Silakan refresh halaman.');
+        return;
+    }
+
+    list.innerHTML = 'Memuat...';
+    modal.classList.remove('hidden');
+
+    try {
+        const response = await fetch('/api/leaderboard');
+        const games = await response.json();
+
+        list.innerHTML = '';
+        if (games.length === 0) {
+            list.innerHTML = '<li>Belum ada skor tersimpan</li>';
+            return;
+        }
+
+        games.forEach((game, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span>#${index + 1} ${game.player_name}</span>
+                <span class="score-badge">${game.score} Poin</span>
+            `;
+            list.appendChild(li);
+        });
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = 'Gagal memuat papan skor';
+    }
+}
+
+function renderAnswerGrid() {
+    const container = document.getElementById('answer-review-grid');
+
+    if (!container) {
+        console.error('answer-review-grid not found');
+        return;
+    }
+
+    container.innerHTML = '';
+    container.style.gridTemplateColumns = `repeat(${currentGame.width}, 25px)`;
+
+    for (let r = 0; r < currentGame.height; r++) {
+        for (let c = 0; c < currentGame.width; c++) {
+            const correctVal = currentGame.grid[r][c];
+            const cellDiv = document.createElement('div');
+            cellDiv.className = `cell answer-cell ${correctVal === '' ? 'empty' : ''}`;
+
+            if (correctVal !== '') {
+                // Get user's input from the main crossword grid
+                const userInput = document.querySelector(`#crossword-grid .cell[data-row="${r}"][data-col="${c}"] input`);
+                const userVal = userInput ? userInput.value.toUpperCase() : '';
+
+                // Check if this cell is the start of a word
+                const wordStart = currentGame.words.find(w => w.row === r && w.col === c);
+                if (wordStart) {
+                    const numSpan = document.createElement('span');
+                    numSpan.className = 'number';
+                    numSpan.textContent = wordStart.number;
+                    cellDiv.appendChild(numSpan);
+                }
+
+                const textSpan = document.createElement('span');
+                textSpan.className = 'letter';
+                textSpan.textContent = correctVal;
+
+                // Color code based on correctness
+                if (userVal === correctVal) {
+                    textSpan.classList.add('correct-answer');
+                } else {
+                    textSpan.classList.add('incorrect-answer');
+                }
+
+                cellDiv.appendChild(textSpan);
+            }
+
+            container.appendChild(cellDiv);
+        }
     }
 }

@@ -5,7 +5,7 @@ TTS Astro adalah aplikasi permainan teka-teki silang (crossword) edukatif yang d
 
 ## Fitur Utama
 
-- **Database Bintang Luas**: Memuat 528 nama bintang dari berbagai konstelasi dengan deskripsi yang edukatif dan mudah dipahami.
+- **Database Bintang Luas**: Memuat 350+ nama bintang dari berbagai konstelasi dengan deskripsi yang edukatif, sederhana, dan mudah dipahami.
 - **100% Bahasa Indonesia**: Antarmuka dan petunjuk permainan sepenuhnya dalam Bahasa Indonesia, ramah untuk anak-anak.
 - **Generator Puzzle Otomatis**: Setiap permainan baru menghasilkan susunan teka-teki silang yang unik dan berbeda.
 - **Sistem Penilaian**: Fitur scoring dan leaderboard untuk menyimpan skor tertinggi.
@@ -54,7 +54,7 @@ uv run python scraper.py
 Output yang diharapkan:
 ```
 Reading nama_bintang.txt...
-Found 528 stars from file.
+Found 350 stars from file.
 Cleared existing data.
 Database populated.
 ```
@@ -108,8 +108,36 @@ tts_astro/
 ├── models.py              # Definisi model database (Star, Game)
 ├── generator.py           # Algoritma pembuat teka-teki silang
 ├── scraper.py             # Script untuk memproses data bintang
-├── nama_bintang.txt       # Data mentah nama bintang
+├── clean_stars.py         # Script untuk membersihkan data bintang
+├── analyze_data.py        # Script untuk verifikasi data bintang
+├── nama_bintang.txt       # Data nama bintang (sudah dibersihkan)
 └── pyproject.toml         # Konfigurasi proyek & dependensi
+```
+
+## Mengelola Data Bintang
+
+### Membersihkan Data (Opsional)
+
+Jika Anda ingin mengupdate atau membersihkan data bintang mentah:
+
+```bash
+# Jalankan script pembersih
+uv run python clean_stars.py
+
+# Salin hasil ke file utama
+cp nama_bintang_clean.txt nama_bintang.txt  # Linux/macOS
+Copy-Item nama_bintang_clean.txt nama_bintang.txt  # Windows PowerShell
+
+# Update database
+uv run python scraper.py
+```
+
+### Verifikasi Data
+
+Untuk melihat sample data yang telah diproses:
+
+```bash
+uv run python analyze_data.py
 ```
 
 ## Troubleshooting
@@ -130,7 +158,7 @@ uv run uvicorn main:app --reload --port 8001
 
 ## Kredit & Data
 
-Data nama bintang dan deskripsinya diambil dan diproses dari referensi astronomi terpercaya, disesuaikan agar mudah dipahami oleh pengguna awam dan anak-anak.
+Data nama bintang diambil dari IAU (International Astronomical Union) dan berbagai referensi astronomi terpercaya. Deskripsi telah disederhanakan dan diterjemahkan agar mudah dipahami oleh pengguna awam dan anak-anak Indonesia.
 
 ---
 Dibuat untuk edukasi astronomi Indonesia.

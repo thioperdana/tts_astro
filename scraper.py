@@ -1,8 +1,6 @@
-import httpx
-from bs4 import BeautifulSoup
+
 from sqlmodel import Session, SQLModel, create_engine
 from models import Star
-import re
 
 def scrape_stars():
     file_path = "nama_bintang.txt"
@@ -25,17 +23,11 @@ def scrape_stars():
                 description = parts[3].strip()
                 
                 if name and constellation:
-                    # Clean description
-                    # Remove [1], [note 1], [citation needed], etc.
-                    cleaned_desc = re.sub(r'\[.*?\]', '', description).strip()
-                    
                     # Always start with "Bintang di [constellation]"
                     meaning = f"Bintang di {constellation}"
                     
-                    # Add historical description if available and not NameExoWorlds
-                    # Also check if cleaned_desc is not empty
-                    if cleaned_desc and "NameExoWorlds" not in cleaned_desc:
-                        meaning += f". {cleaned_desc}"
+                    if description:
+                        meaning += f". {description}"
                     
                     stars.append(Star(
                         name=name,

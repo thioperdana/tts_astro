@@ -206,17 +206,31 @@ async function saveGame() {
     if (!currentGame.grid.length) return;
 
     try {
-        const response = await fetch(`${API_BASE}/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(currentGame)
-        });
+        // Save to localStorage
+        const savedGames = JSON.parse(localStorage.getItem('tts_astro_saved_games') || '[]');
 
-        if (response.ok) {
-            alert('Permainan berhasil disimpan!');
+        // Check if game already exists in storage
+        const existingIndex = savedGames.findIndex(g => g.id === currentGame.id);
+
+        const gameData = {
+            ...currentGame,
+            savedAt: new Date().toISOString(),
+            // Generate a local ID if not present (negative to distinguish from server IDs)
+            id: currentGame.id || -Date.now()
+        };
+
+        // Update current game ID if it was null
+        currentGame.id = gameData.id;
+
+        if (existingIndex >= 0) {
+            savedGames[existingIndex] = gameData;
         } else {
-            alert('Gagal menyimpan permainan');
+            savedGames.push(gameData);
         }
+
+        localStorage.setItem('tts_astro_saved_games', JSON.stringify(savedGames));
+        alert('Permainan berhasil disimpan di browser!');
+
     } catch (e) {
         console.error(e);
         alert('Gagal menyimpan permainan');
@@ -226,39 +240,38 @@ async function saveGame() {
 async function showLoadModal() {
     const modal = document.getElementById('load-modal');
     const list = document.getElementById('saved-games-list');
-    list.innerHTML = 'Memuat...';
+    list.innerHTML = '';
     modal.classList.remove('hidden');
 
     try {
-        const response = await fetch(`${API_BASE}/games`);
-        const games = await response.json();
+        const savedGames = JSON.parse(localStorage.getItem('tts_astro_saved_games') || '[]');
 
-        list.innerHTML = '';
-        games.forEach(game => {
+        if (savedGames.length === 0) {
+            list.innerHTML = '<li>Tidak ada permainan tersimpan</li>';
+            return;
+        }
+
+        // Sort by savedAt desc
+        savedGames.sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+
+        savedGames.forEach(game => {
             const li = document.createElement('li');
-            li.innerHTML = `<span>Game #${game.id}</span> <span>${new Date(game.created_at).toLocaleString()}</span>`;
+            li.innerHTML = `<span>Game ${new Date(game.savedAt).toLocaleDateString()}</span> <span>${new Date(game.savedAt).toLocaleTimeString()}</span>`;
             li.addEventListener('click', () => {
-                loadGame(game.id);
+                loadGameData(game);
                 modal.classList.add('hidden');
             });
             list.appendChild(li);
         });
     } catch (e) {
+        console.error(e);
         list.innerHTML = 'Gagal memuat permainan';
     }
 }
 
-async function loadGame(id) {
-    try {
-        const response = await fetch(`${API_BASE}/load/${id}`);
-        if (!response.ok) throw new Error('Failed to load');
-        const data = await response.json();
-        loadGameData(data);
-    } catch (e) {
-        console.error(e);
-        alert('Gagal memuat permainan');
-    }
-}
+// loadGame function is no longer needed as we load directly from the object in memory
+// but keeping a stub if needed or removing it. 
+// The showLoadModal now calls loadGameData directly.
 
 // Scoring System
 document.getElementById('btn-submit-game').addEventListener('click', submitGame);
@@ -270,8 +283,9 @@ document.getElementById('btn-save-score').addEventListener('click', savePlayerNa
 async function submitGame() {
     if (!currentGame) return;
 
-    // If game hasn't been saved yet, save it first
-    if (!currentGame.id) {
+    // If game hasn't been saved to SERVER yet (or has a local negative ID), save it to server first
+    // We need a real server ID to submit scores
+    if (!currentGame.id || currentGame.id < 0) {
         try {
             const saveResponse = await fetch(`${API_BASE}/save`, {
                 method: 'POST',
@@ -281,14 +295,14 @@ async function submitGame() {
 
             if (saveResponse.ok) {
                 const saveData = await saveResponse.json();
-                currentGame.id = saveData.id;
+                currentGame.id = saveData.id; // Update to server ID
             } else {
-                alert('Gagal menyimpan permainan sebelum menilai');
+                alert('Gagal menyimpan permainan ke server sebelum menilai');
                 return;
             }
         } catch (e) {
             console.error(e);
-            alert('Error menyimpan permainan');
+            alert('Error menyimpan permainan ke server');
             return;
         }
     }
@@ -379,10 +393,17 @@ async function loadLeaderboard() {
 
         games.forEach((game, index) => {
             const li = document.createElement('li');
-            li.innerHTML = `
-                <span>#${index + 1} ${game.player_name}</span>
-                <span class="score-badge">${game.score} Poin</span>
-            `;
+
+            // Safe rendering to prevent XSS
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = `#${index + 1} ${game.player_name}`;
+
+            const scoreSpan = document.createElement('span');
+            scoreSpan.className = 'score-badge';
+            scoreSpan.textContent = `${game.score} Poin`;
+
+            li.appendChild(nameSpan);
+            li.appendChild(scoreSpan);
             list.appendChild(li);
         });
     } catch (e) {
@@ -416,10 +437,17 @@ async function showLeaderboardModal() {
 
         games.forEach((game, index) => {
             const li = document.createElement('li');
-            li.innerHTML = `
-                <span>#${index + 1} ${game.player_name}</span>
-                <span class="score-badge">${game.score} Poin</span>
-            `;
+
+            // Safe rendering to prevent XSS
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = `#${index + 1} ${game.player_name}`;
+
+            const scoreSpan = document.createElement('span');
+            scoreSpan.className = 'score-badge';
+            scoreSpan.textContent = `${game.score} Poin`;
+
+            li.appendChild(nameSpan);
+            li.appendChild(scoreSpan);
             list.appendChild(li);
         });
     } catch (e) {

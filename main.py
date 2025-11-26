@@ -1,22 +1,77 @@
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import JSONResponse
 from sqlmodel import Session, select, create_engine, desc
 from models import Star, Game
 from generator import CrosswordGenerator
 import random
 import json
+import os
+import html
 from pydantic import BaseModel
 from typing import List, Optional
 
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
-app = FastAPI()
+# Environment Configuration
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+ALLOWED_ORIGINS_ENV = os.getenv("ALLOWED_ORIGINS", "")
 
-origins = [
-    "http://notispaces.cloud",
-    "https://notispaces.cloud"
-]
+# Rate Limiter
+limiter = Limiter(key_func=get_remote_address)
+
+# Disable docs in production
+docs_url = "/docs" if ENVIRONMENT != "production" else None
+redoc_url = "/redoc" if ENVIRONMENT != "production" else None
+
+app = FastAPI(docs_url=docs_url, redoc_url=redoc_url)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Security Middleware for Direct Access Restriction (Production Only)
+@app.middleware("http")
+async def check_direct_access(request: Request, call_next):
+    if ENVIRONMENT == "production" and request.url.path.startswith("/api/"):
+        referer = request.headers.get("referer")
+        origin = request.headers.get("origin")
+        
+        # If ALLOWED_ORIGINS is set, check against it
+        allowed_domains = [d.strip() for d in ALLOWED_ORIGINS_ENV.split(",") if d.strip()]
+        
+        if not referer and not origin:
+            # Block direct access (no referer/origin)
+            return JSONResponse(status_code=403, content={"detail": "Direct access forbidden"})
+            
+        if allowed_domains:
+            # If specific domains are enforced
+            valid = False
+            if referer:
+                for domain in allowed_domains:
+                    if domain in referer:
+                        valid = True
+                        break
+            if origin and origin in allowed_domains:
+                valid = True
+                
+            if not valid:
+                 return JSONResponse(status_code=403, content={"detail": "Forbidden source"})
+
+    response = await call_next(request)
+    return response
+
+if ALLOWED_ORIGINS_ENV:
+    origins = [d.strip() for d in ALLOWED_ORIGINS_ENV.split(",") if d.strip()]
+else:
+    origins = [
+        "http://notispaces.cloud",
+        "https://notispaces.cloud",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -44,7 +99,8 @@ def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/api/generate")
-def generate_game(session: Session = Depends(get_session)):
+@limiter.limit("5/minute")
+def generate_game(request: Request, session: Session = Depends(get_session)):
     stars = session.exec(select(Star)).all()
     if not stars:
         raise HTTPException(status_code=404, detail="No stars found in database")
@@ -98,13 +154,14 @@ class NameRequest(BaseModel):
     player_name: str
 
 @app.post("/api/games/{game_id}/submit")
-def submit_game(game_id: int, request: SubmitRequest, session: Session = Depends(get_session)):
+@limiter.limit("10/minute")
+def submit_game(request: Request, game_id: int, req: SubmitRequest, session: Session = Depends(get_session)):
     game = session.get(Game, game_id)
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
     
     solution_grid = json.loads(game.grid_data)
-    user_grid = request.user_grid
+    user_grid = req.user_grid
     
     score = 0
     total_letters = 0
@@ -139,12 +196,14 @@ def submit_game(game_id: int, request: SubmitRequest, session: Session = Depends
     }
 
 @app.post("/api/games/{game_id}/save_name")
-def save_name(game_id: int, request: NameRequest, session: Session = Depends(get_session)):
+@limiter.limit("5/minute")
+def save_name(request: Request, game_id: int, req: NameRequest, session: Session = Depends(get_session)):
     game = session.get(Game, game_id)
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
     
-    game.player_name = request.player_name
+    import html
+    game.player_name = html.escape(req.player_name)
     session.add(game)
     session.commit()
     
